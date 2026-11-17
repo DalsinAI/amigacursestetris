@@ -20,9 +20,9 @@ no GFOpenGPU.
 
 How it was ported
 -----------------
-The game is built from upstream as it is, with our curses
-(amiga/curses.c, shared with our other console ports); its keys now also
-read the function keys (boss mode leaves with F1). Upstream's loop ticks
+The game is built from upstream as it is, with our curses, GFOpenCurses
+(DalsinAI/gfopencurses, the library our console ports share), which reads
+the function keys too (boss mode leaves with F1). Upstream's loop ticks
 the game, then sleeps 10 ms, and the game's speed is counted in those
 ticks; the Amiga's clock moves in 50ths of a second, so a 10 ms sleep
 would take 20 ms and the game would run at half speed: amiga/ticks.c
