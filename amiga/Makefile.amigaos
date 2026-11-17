@@ -1,0 +1,70 @@
+# Tetris for GFOS (AmigaOS 3.2 with GFOpenUp), 68040/68060: Stephen
+# Brennan's curses Tetris in its own 80 x 24 console window, in colour.
+# No SDL (upstream's music is optional and left out), no ACGame, no
+# GFOpenGPU.
+#
+#   make -f amiga/Makefile.amigaos -j4 UP=/path/to/tetris [STOVE=...]
+#
+# UP is upstream at the commit package/tetris.lock names, with
+# amiga/patches applied (package/build-amiga.sh does both). STOVE is a
+# GFOpenAmigaGCC 16.2.0-open6 stove (prefix/ has the compiler and the NDK).
+# The game draws through amiga/curses.c (the part of ncurses it uses, sent
+# to the console as ANSI with the eight pens for colour); its 10 ms tick is
+# kept on the Amiga's 50 Hz clock by amiga/ticks.c; amiga/console_amiga.c
+# opens the window and reads the keys (dos.library WaitForChar).
+#
+# Output: build/amigaos/CursesTetris/ (the drawer: CursesTetris, ReadMe,
+# upstream's README, the licence, GlowIcons), build/amigaos/CursesTetris.info
+# and Install-CursesTetris beside them.
+
+UP      ?= ../tetris
+VERSION ?= git20190925
+STOVE   ?= $(HOME)/AmiCradle/stoves/os32-gcc16-open6
+PREFIX  ?= $(STOVE)/prefix
+CC      = $(PREFIX)/bin/m68k-amigaos-gcc
+CPU     ?= -m68040 -msoft-float
+# -fno-tree-loop-distribute-patterns: GCC 16's loop miscompile.
+OPT     ?= -Os -fomit-frame-pointer -fno-tree-loop-distribute-patterns
+
+UPFLAGS = -noixemul $(OPT) $(CPU) -std=gnu99 -w -D__amigaos__ \
+          -DTETRIS_SAVE='"PROGDIR:tetris.save"' \
+          -include amiga/include/amiga_prelude.h -Iamiga/include -Iamiga
+MYFLAGS = -noixemul $(OPT) $(CPU) -std=gnu99 -Wall \
+          -DAMIGA_GAME_TITLE='"Tetris"' -Iamiga/include -Iamiga
+LDFLAGS = -noixemul $(CPU)
+
+BUILD   = build/amigaos
+OBJ     = $(BUILD)/obj
+OUT     = $(BUILD)/CursesTetris
+
+UPSRC   = main tetris util
+PORT    = curses keys console_amiga ticks
+
+all: $(OUT)/CursesTetris package
+
+$(OBJ)/up/%.o: $(UP)/src/%.c $(wildcard $(UP)/src/*.h amiga/include/*.h)
+	@mkdir -p $(dir $@)
+	$(CC) $(UPFLAGS) -c -o $@ $<
+
+$(OBJ)/port/%.o: amiga/%.c $(wildcard amiga/*.h amiga/include/*.h)
+	@mkdir -p $(dir $@)
+	$(CC) $(MYFLAGS) -c -o $@ $<
+
+$(OUT)/CursesTetris: $(UPSRC:%=$(OBJ)/up/%.o) $(PORT:%=$(OBJ)/port/%.o)
+	@mkdir -p $(OUT)
+	$(CC) $(LDFLAGS) -o $@ $^
+
+package: $(OUT)/CursesTetris AMIGA_PORT.md
+	cp AMIGA_PORT.md $(OUT)/ReadMe
+	cp $(UP)/README.md $(OUT)/ReadMe-Tetris
+	cp $(UP)/LICENSE.txt $(OUT)/LICENSE.txt
+	cp amiga/icons/CursesTetris.info amiga/icons/ReadMe.info $(OUT)/
+	cp amiga/icons/ReadMe.info $(OUT)/ReadMe-Tetris.info
+	cp amiga/icons/ReadMe.info $(OUT)/LICENSE.txt.info
+	cp amiga/icons/CursesTetris-drawer.info $(BUILD)/CursesTetris.info
+	cp amiga/Install-CursesTetris amiga/Install-CursesTetris.info $(BUILD)/
+
+clean:
+	rm -rf $(BUILD)
+
+.PHONY: all package clean

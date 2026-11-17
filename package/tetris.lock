@@ -1,0 +1,5 @@
+# Upstream Tetris (Stephen Brennan's curses game), fetched at build time.
+UP_URL=https://github.com/brenns10/tetris
+UP_COMMIT=9133050f54596b5511697a59cee2dc62240ee45f
+UP_VERSION=git20190925
+PORT_VERSION=20190925-gfos1

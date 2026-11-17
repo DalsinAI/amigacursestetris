@@ -1,0 +1,121 @@
+The Amiga port of Tetris (brenns10): the save file named by TETRIS_SAVE
+(PROGDIR:tetris.save on the Amiga), carried on at the next start; the
+game kept at its 10 ms tick on the Amiga clock (amiga/ticks.c); the game
+over and save messages shown in the window before it closes.
+
+diff --git a/src/main.c b/src/main.c
+index 9715425..b5666b9 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -28,6 +28,34 @@
+ #include "tetris.h"
+ #include "util.h"
+ 
++/*
++  Where 's' saves the game (the Amiga build: PROGDIR:, beside the game).
++ */
++#ifndef TETRIS_SAVE
++# define TETRIS_SAVE "tetris.save"
++#endif
++
++#ifdef __amigaos__
++/*
++  The Amiga's clock moves in 50ths of a second, so the game's 10 ms tick is
++  kept by running each tick that is due (amiga/ticks.c); the game's last
++  words are shown in its window, since the window closes with the game.
++ */
++int amiga_ticks_due(int period_ms);
++static void amiga_last_words(WINDOW *w, const char *a, const char *b)
++{
++  wclear(w);
++  box(w, 0, 0);
++  mvwprintw(w, 2, 2, "%s", a);
++  mvwprintw(w, 4, 2, "%s", b);
++  mvwprintw(w, 7, 2, "Press a key.");
++  wrefresh(w);
++  flushinp();
++  timeout(-1);
++  getch();
++}
++#endif
++
+ /*
+   2 columns per cell makes the game much nicer.
+  */
+@@ -146,13 +174,27 @@ void save(tetris_game *game, WINDOW *w)
+     timeout(0);
+     return;
+   }
+-  f = fopen("tetris.save", "w");
++  f = fopen(TETRIS_SAVE, "w");
++#ifdef __amigaos__
++  if (f == NULL) {
++    amiga_last_words(w, "The game could", "not be saved.");
++    timeout(0);
++    return;
++  }
++#endif
+   tg_save(game, f);
+   fclose(f);
++#ifdef __amigaos__
++  amiga_last_words(w, "Game saved.", "Start Tetris again");
++#endif
+   tg_delete(game);
+   endwin();
+-  printf("Game saved to \"tetris.save\".\n");
++  printf("Game saved to \"" TETRIS_SAVE "\".\n");
++#ifdef __amigaos__
++  printf("Start the game again to carry on.\n");
++#else
+   printf("Resume by passing the filename as an argument to this program.\n");
++#endif
+   exit(EXIT_SUCCESS);
+ }
+ 
+@@ -195,6 +237,15 @@ int main(int argc, char **argv)
+     tg = tg_load(f);
+     fclose(f);
+   } else {
++#ifdef __amigaos__
++    // A saved game (from 's') carries on, once.
++    FILE *f = fopen(TETRIS_SAVE, "r");
++    if (f != NULL) {
++      tg = tg_load(f);
++      fclose(f);
++      remove(TETRIS_SAVE);
++    } else
++#endif
+     // Otherwise create new game.
+     tg = tg_create(22, 10);
+   }
+@@ -245,7 +296,15 @@ int main(int argc, char **argv)
+     display_piece(hold, tg->stored);
+     display_score(score, tg);
+     doupdate();
++#ifdef __amigaos__
++    {
++      int due = amiga_ticks_due(10);
++      while (running && --due > 0)
++        running = tg_tick(tg, TM_NONE);
++    }
++#else
+     sleep_milli(10);
++#endif
+ 
+     switch (getch()) {
+     case KEY_LEFT:
+@@ -291,6 +350,14 @@ int main(int argc, char **argv)
+     }
+   }
+ 
++#ifdef __amigaos__
++  {
++    char line[32];
++    snprintf(line, sizeof line, "%d points", tg->points);
++    amiga_last_words(board, "Game over!", line);
++  }
++#endif
++
+   // Deinitialize NCurses
+   wclear(stdscr);
+   endwin();

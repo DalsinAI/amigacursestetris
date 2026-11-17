@@ -1,0 +1,14 @@
+{
+  "name": "CursesTetris",
+  "version": "20190925-gfos1",
+  "drawer": "CursesTetris",
+  "program": "CursesTetris",
+  "cpu": "68040",
+  "fpu": false,
+  "space": 120000,
+  "modules": [],
+  "parent": "Work:Games",
+  "badge": "icons/art/tetris.png",
+  "keep": ["tetris.save"],
+  "script": "Install-CursesTetris"
+}
